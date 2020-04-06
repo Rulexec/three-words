@@ -1,0 +1,12 @@
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+PATH=$DIR/nodejs/node-v12.16.1/bin:$PATH
+
+forever \
+	--uid "{{ forever_uid }}" \
+	--append \
+	-o $DIR/stdout.log \
+	-e $DIR/stderr.log \
+	-c /bin/bash start $DIR/run
