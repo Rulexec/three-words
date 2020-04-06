@@ -1,0 +1,96 @@
+:global {
+	* {
+		margin: 0;
+		padding: 0;
+		box-sizing: border-box;
+	}
+}
+
+@extralightgray: #f3f3f3;
+@lightgray: #b9b9b9;
+@gray: #2a2a2a;
+@darkgray: #646464;
+@black: #000000;
+
+.body {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	font-family: sans-serif;
+	min-height: 100vh;
+}
+
+.input {
+	font-size: 2em;
+	border: 1px solid @lightgray;
+	border-radius: 0.25em;
+	padding: 0.25em 0.5em;
+	outline: none;
+	width: 100%;
+
+	&:disabled {
+		background-color: @extralightgray;
+		color: @lightgray;
+	}
+	&:not(:disabled) {
+		&:hover, &:focus {
+			border-color: @darkgray;
+			outline: none;
+		}
+	}
+}
+
+.form {
+	width: 80vw;
+}
+
+.p {
+	font-size: 1.5em;
+	padding: 1em 0 0.25em 0.5em;
+}
+.hint {
+	color: @lightgray;
+}
+
+.changeMode {
+	color: @gray;
+	border-bottom: 1px dashed @gray;
+	cursor: pointer;
+
+	&:hover {
+		color: @black;
+		border-bottom-color: @black;
+	}
+}
+
+.content {
+	margin-top: 1em;
+	border-radius: 0.25em;
+	background: @extralightgray;
+	padding: 0.5em;
+	font-size: 2em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.button {
+	font-size: 2em;
+	padding: 0.25em 0.5em;
+	margin-top: 1em;
+	background: @extralightgray;
+	border: 1px solid @darkgray;
+	border-radius: 0.25em;
+	width: 100%;
+	cursor: pointer;
+
+	&:disabled {
+		cursor: default;
+
+		color: @lightgray;
+		border-color: @lightgray;
+	}
+	&:hover:not(:disabled) {
+		border-color: @black;
+	}
+}

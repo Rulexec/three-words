@@ -1,0 +1,25 @@
+<div data-template-id="main-input">
+	<input data-id="input" type="text" data-classes="input" />
+</div>
+
+<div data-template-id="form" data-classes="form">
+	<div data-id="decryptBlockEl" style="display: none;">
+		<p data-classes="p">
+			<span data-id="decryptButtonEl" data-classes="changeMode"
+				>Расшифровать:</span
+			>
+		</p>
+		<div data-slot="wordsInput"></div>
+		<div data-id="contentEl" data-classes="content"></div>
+	</div>
+	<div data-id="encryptBlockEl" style="display: none;">
+		<p data-classes="p">
+			<span data-id="encryptSwitchEl" data-classes="changeMode">Закодировать:</span>
+		</p>
+		<div>
+			<input data-id="toEncodeEl" type="text" data-classes="input" />
+		</div>
+		<button data-id="encryptButtonEl" data-classes="button"></button>
+		<div data-id="encryptContentEl" data-classes="content"></div>
+	</div>
+</div>
