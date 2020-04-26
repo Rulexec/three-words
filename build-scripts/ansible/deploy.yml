@@ -55,6 +55,7 @@
         copy_links: yes
         times: yes
         recursive: yes
+        delete: yes
       with_items:
         - node_modules/
         - dictionary/
