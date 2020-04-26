@@ -1,0 +1,79 @@
+- hosts: "{{ variable_hosts }}"
+  gather_facts: no
+
+  vars:
+    project_dir: three-words
+    forever_uid: three-words
+
+  tasks:
+    - name: create nodejs dir
+      file:
+        path: "{{ project_dir }}/nodejs"
+        state: directory
+
+    - name: check if nodejs exists
+      stat:
+        path: "{{ project_dir }}/nodejs/node-v12.16.1"
+      register: nodejs_dir
+
+    - name: install nodejs
+      block:
+        - name: download nodejs
+          get_url:
+            url: http://nodejs.org/dist/v12.16.1/node-v12.16.1-linux-x64.tar.gz
+            dest: "{{ project_dir }}/nodejs/node-v12.16.1-linux-x64.tar.gz"
+            checksum: sha256:b2d9787da97d6c0d5cbf24c69fdbbf376b19089f921432c5a61aa323bc070bea
+        - name: create nodejs dir
+          file:
+            path: "{{ project_dir }}/nodejs/node-v12.16.1-linux-x64"
+            state: directory
+        - name: extract nodejs
+          command:
+            cmd: tar xf node-v12.16.1-linux-x64.tar.gz
+            chdir: "{{ project_dir }}/nodejs"
+            warn: False # `unarchive` says that cannot extract it
+        - name: install forever globally
+          shell:
+            cmd: "PATH=$PWD:$PATH npm install -g forever@2.0.0"
+            chdir: "{{ project_dir }}/nodejs/node-v12.16.1-linux-x64/bin"
+        - name: mv nodejs
+          command:
+            cmd: mv node-v12.16.1-linux-x64 node-v12.16.1
+            chdir: "{{ project_dir }}/nodejs"
+      when: nodejs_dir.stat.exists == False
+
+    - name: create server dir
+      file:
+        path: "{{ project_dir }}/server"
+        state: directory
+
+    - name: sync code
+      synchronize:
+        src: "../../{{ item }}"
+        dest: "{{ project_dir }}/server/{{ item }}"
+        archive: no
+        copy_links: yes
+        times: yes
+        recursive: yes
+      with_items:
+        - node_modules/
+        - dictionary/
+        - src/
+        - web/
+        - package.json
+
+    - name: make run scripts
+      template:
+        src: "templates/{{ item }}.j2"
+        dest: "{{ project_dir }}/{{ item }}"
+        mode: 0744
+      with_items:
+        - shell
+        - run
+        - forever-start
+        - forever-restart
+
+    - name: restart or start
+      shell:
+        cmd: "./forever-restart || ./forever-start"
+        chdir: "{{ project_dir }}"
