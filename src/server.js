@@ -2,11 +2,14 @@ import AsyncM from 'asyncm';
 import fs from 'fs';
 import _path from 'path';
 import metatrain from 'hypershape-metatrain';
-import { getRandomPhrase } from './words/generate.js';
+import { getAllWords } from './words/generate.js';
 import { WordsGenerator } from './words-generator.js';
 import { resolveCodePath } from './code-relative-path.js';
 import { Logger } from 'hypershape-logging';
 import { KeyValueStorage } from 'hypershape-level';
+import { AutoComplete } from './autocomplete/autocomplete.js';
+import { HrTimer } from './util/timing.js';
+import { PercentileStats } from './util/percentile-stats.js';
 
 const readJsonFromStream = metatrain.readJsonFromStream;
 
@@ -20,6 +23,8 @@ if (!fs.existsSync(dataPath)) {
 	fs.mkdirSync(dataPath);
 }
 
+let mainLogger = new Logger();
+
 if (fs.existsSync(frontendPath)) {
 	fs.readdirSync(frontendPath).forEach((path) => {
 		let content;
@@ -27,15 +32,13 @@ if (fs.existsSync(frontendPath)) {
 		try {
 			content = fs.readFileSync(_path.join(frontendPath, path));
 		} catch (e) {
-			console.warn(e);
+			mainLogger.error('serveFrontend', null, { extra: e });
 			return;
 		}
 
 		frontendFiles.set(path, content);
 	});
 }
-
-let mainLogger = new Logger();
 
 mainLogger.info('start');
 
@@ -52,6 +55,34 @@ let wordsGenerator = new WordsGenerator({
 	lockedPhrases,
 	phrasesSpace,
 	logger: mainLogger.fork('words'),
+});
+
+let autoCompleteStats = new PercentileStats({
+	minCount: 100,
+	maxCount: 10000,
+	maxSeconds: 60 * 60 * 24, // 1 day
+
+	onCalculated({ count, average, percentiles }) {
+		let avg = Math.ceil(average * 100) / 100;
+
+		let props = {
+			count,
+			avg,
+		};
+
+		percentiles.forEach(({ p, value }) => {
+			props['p' + p] = Math.ceil(value * 100) / 100;
+		});
+
+		mainLogger.log('autoComplete', props, {
+			level: Logger.LEVEL.STATS,
+		});
+	},
+});
+
+let autoComplete = new AutoComplete();
+getAllWords().forEach((word) => {
+	autoComplete.addWord(word);
 });
 
 const PORT = process.env.PORT || 9001;
@@ -142,6 +173,46 @@ server.post('/api/decode', (req, res) => {
 		})
 		.run(null, (error) => {
 			mainLogger.error('api:decode', null, { extra: error });
+
+			res.statusCode = 500;
+			res.end('{"error":500}');
+		});
+});
+
+server.post('/api/autocomplete', (req, res) => {
+	let autoCompleteTimer;
+
+	readJsonFromStream(req)
+		.result((json) => {
+			let invalid =
+				!json ||
+				!json.word ||
+				typeof json.word !== 'string' ||
+				json.word.length > 30;
+
+			if (invalid) {
+				return AsyncM.error('invalidParams');
+			}
+
+			autoCompleteTimer = new HrTimer();
+
+			return autoComplete.getVariants({
+				word: json.word,
+				count: 3,
+			});
+		})
+		.result((variants) => {
+			autoCompleteStats.measurement(autoCompleteTimer.elapsedMs());
+
+			res.setHeader('content-type', 'application/json; charset=utf-8');
+			res.end(
+				JSON.stringify({
+					variants,
+				}),
+			);
+		})
+		.run(null, (error) => {
+			mainLogger.error('api:autoComplete', null, { extra: error });
 
 			res.statusCode = 500;
 			res.end('{"error":500}');
@@ -252,6 +323,8 @@ mainDb
 	});
 
 function error404(req, res) {
+	mainLogger.trace('http:404', { method: req.method, url: req.url });
+
 	res.statusCode = 404;
 	res.end('404');
 }

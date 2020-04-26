@@ -3,8 +3,8 @@ import { getRandomPhrase } from './words/generate.js';
 
 export { WordsGenerator };
 
-const ENOUGH_WORDS = 3;
-const WORDS_TO_GEN = 1;
+const ENOUGH_WORDS = 1000;
+const WORDS_TO_GEN = 200;
 
 function WordsGenerator({ lockedPhrases, logger, phrasesSpace }) {
 	let variants = [];
