@@ -1,4 +1,4 @@
-export { HrTimer }
+export { HrTimer };
 
 function HrTimer() {
 	let [s1, ns1] = process.hrtime();

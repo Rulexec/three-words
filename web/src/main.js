@@ -269,7 +269,7 @@ function Api() {
 		async function fetchVariants() {
 			while (true) {
 				try {
-					let response = await fetch(__API_URL + '/api/variants', {
+					let response = await fetch(ENV.API_URL + '/api/variants', {
 						method: 'POST',
 					});
 					let json = await response.json();
@@ -291,7 +291,7 @@ function Api() {
 	};
 
 	this.save = async function(value) {
-		let response = await fetch(__API_URL + '/api/save', {
+		let response = await fetch(ENV.API_URL + '/api/save', {
 			method: 'POST',
 			body: JSON.stringify({
 				value,
@@ -305,7 +305,7 @@ function Api() {
 	};
 
 	this.decode = async function(phrase) {
-		let response = await fetch(__API_URL + '/api/decode', {
+		let response = await fetch(ENV.API_URL + '/api/decode', {
 			method: 'POST',
 			body: JSON.stringify({
 				phrase,

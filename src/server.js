@@ -23,6 +23,8 @@ if (!fs.existsSync(dataPath)) {
 	fs.mkdirSync(dataPath);
 }
 
+let mainLogger = new Logger();
+
 if (fs.existsSync(frontendPath)) {
 	fs.readdirSync(frontendPath).forEach((path) => {
 		let content;
@@ -30,15 +32,13 @@ if (fs.existsSync(frontendPath)) {
 		try {
 			content = fs.readFileSync(_path.join(frontendPath, path));
 		} catch (e) {
-			console.warn(e);
+			mainLogger.error('serveFrontend', null, { extra: e });
 			return;
 		}
 
 		frontendFiles.set(path, content);
 	});
 }
-
-let mainLogger = new Logger();
 
 mainLogger.info('start');
 

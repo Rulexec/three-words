@@ -1,5 +1,4 @@
 import fs from 'fs';
-import _path from 'path';
 import { resolveCodePath } from '../code-relative-path.js';
 
 export { getRandomPhrase, getAllWords };

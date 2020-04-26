@@ -40,7 +40,7 @@ function PercentileStats(options) {
 			return {
 				p,
 				value: getPercentile(measurements, p),
-			}
+			};
 		});
 
 		measurements = [];
@@ -60,7 +60,7 @@ function PercentileStats(options) {
 			clearTimeout(secondsTimeoutId);
 		}
 
-		secondsTimeoutId = setTimeout(() => { calculate(true) }, maxSeconds * 1000);
+		secondsTimeoutId = setTimeout(() => { calculate(true); }, maxSeconds * 1000);
 	}
 }
 

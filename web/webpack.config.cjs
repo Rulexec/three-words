@@ -49,7 +49,7 @@ let config = {
 			favicon: _path.join(__dirname, 'static/favicon.png'),
 		}),
 		new webpack.DefinePlugin({
-			__API_URL: '""',
+			'ENV.API_URL': '""',
 		}),
 	],
 	devServer: {
