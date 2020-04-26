@@ -8,6 +8,8 @@ import { resolveCodePath } from './code-relative-path.js';
 import { Logger } from 'hypershape-logging';
 import { KeyValueStorage } from 'hypershape-level';
 import { AutoComplete } from './autocomplete/autocomplete.js';
+import { HrTimer } from './util/timing.js';
+import { PercentileStats } from './util/percentile-stats.js';
 
 const readJsonFromStream = metatrain.readJsonFromStream;
 
@@ -55,8 +57,29 @@ let wordsGenerator = new WordsGenerator({
 	logger: mainLogger.fork('words'),
 });
 
+let autoCompleteStats = new PercentileStats({
+	maxSeconds: 60 * 60 * 24, // 1 day
+
+	onCalculated({ count, average, percentiles }) {
+		let avg = Math.ceil(average * 100) / 100;
+
+		let props = {
+			count,
+			avg,
+		};
+
+		percentiles.forEach(({ p, value }) => {
+			props['p' + p] = Math.ceil(value * 100) / 100;
+		});
+
+		mainLogger.log('autoComplete', props, {
+			level: Logger.LEVEL.STATS,
+		});
+	},
+});
+
 let autoComplete = new AutoComplete();
-getAllWords().forEach(word => {
+getAllWords().forEach((word) => {
 	autoComplete.addWord(word);
 });
 
@@ -155,6 +178,8 @@ server.post('/api/decode', (req, res) => {
 });
 
 server.post('/api/autocomplete', (req, res) => {
+	let autoCompleteTimer;
+
 	readJsonFromStream(req)
 		.result((json) => {
 			let invalid =
@@ -167,12 +192,16 @@ server.post('/api/autocomplete', (req, res) => {
 				return AsyncM.error('invalidParams');
 			}
 
+			autoCompleteTimer = new HrTimer();
+
 			return autoComplete.getVariants({
 				word: json.word,
 				count: 3,
 			});
 		})
-		.result(variants => {
+		.result((variants) => {
+			autoCompleteStats.measurement(autoCompleteTimer.elapsedMs());
+
 			res.setHeader('content-type', 'application/json; charset=utf-8');
 			res.end(
 				JSON.stringify({
