@@ -58,6 +58,8 @@ let wordsGenerator = new WordsGenerator({
 });
 
 let autoCompleteStats = new PercentileStats({
+	minCount: 100,
+	maxCount: 10000,
 	maxSeconds: 60 * 60 * 24, // 1 day
 
 	onCalculated({ count, average, percentiles }) {

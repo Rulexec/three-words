@@ -56,12 +56,16 @@ function Form({ api }) {
 	let lastEncodings = new Map();
 
 	function updateEncryptButtonDisabled() {
-		encryptButtonEl.disabled = encryptButtonDisabledBySending || encryptButtonDisabledByValidation;
+		encryptButtonEl.disabled =
+			encryptButtonDisabledBySending || encryptButtonDisabledByValidation;
 	}
 
 	encryptButtonEl.textContent = ENCRYPT_PHRASE;
 
-	let timeoutId = 0;
+	let autocompleteTimeoutId = 0;
+	let autoCompleteInProgress = false;
+	let autoCompleteRequested = false;
+	let decodeTimeoutId = 0;
 	let counter = 0;
 
 	wordsInput.watchValue((value) => {
@@ -73,6 +77,8 @@ function Form({ api }) {
 			useHintSpan(contentEl, 'Введите фразу');
 			return;
 		}
+
+		scheduleAutoComplete();
 
 		let wordsCount = value.split(' ').length;
 		if (wordsCount < 3) {
@@ -86,8 +92,8 @@ function Form({ api }) {
 
 		useHintSpan(contentEl, 'Смотрим...');
 
-		if (timeoutId) clearTimeout(timeoutId);
-		timeoutId = setTimeout(async () => {
+		if (decodeTimeoutId) clearTimeout(decodeTimeoutId);
+		decodeTimeoutId = setTimeout(async () => {
 			let result = await api.decode(value);
 			if (requestId !== counter) return;
 
@@ -106,6 +112,46 @@ function Form({ api }) {
 				contentEl.textContent = result.value;
 			}
 		}, 1000);
+
+		function scheduleAutoComplete() {
+			if (autocompleteTimeoutId) clearTimeout(autocompleteTimeoutId);
+			autocompleteTimeoutId = setTimeout(() => {
+				if (autoCompleteInProgress) {
+					console.log('in progress');
+					autoCompleteRequested = true;
+					return;
+				}
+
+				autoCompleteInProgress = true;
+
+				autoCompleteLoop();
+
+				function autoCompleteLoop() {
+					autoCompleteRequested = false;
+
+					doAutoComplete().finally(() => {
+						if (autoCompleteRequested) {
+							autoCompleteLoop();
+						} else {
+							autoCompleteInProgress = false;
+						}
+					});
+				}
+			}, 150);
+		}
+
+		async function doAutoComplete() {
+			autoCompleteRequested = false;
+
+			let match = /(?:\s|^)([^\s]+)$/.exec(value);
+			if (!match) return;
+
+			let [, lastWord] = match;
+
+			let result = await api.autoComplete(lastWord);
+
+			console.log(lastWord, result.variants.join(', '));
+		}
 	});
 
 	onEncodeValueChange();
@@ -119,7 +165,10 @@ function Form({ api }) {
 		updateEncryptButtonDisabled();
 
 		if (!value) {
-			useHintSpan(encryptContentEl, 'Закодируйте что-нибудь. Можно ссылку, можно текст.');
+			useHintSpan(
+				encryptContentEl,
+				'Закодируйте что-нибудь. Можно ссылку, можно текст.',
+			);
 		} else if (value.length > MAX_ENCODE_LENGTH) {
 			useHintSpan(encryptContentEl, 'Голландия не резиновая');
 		} else if (lastEncodings.has(value)) {
@@ -138,7 +187,9 @@ function Form({ api }) {
 
 		if (isEnter) doEncrypt();
 	});
-	encryptButtonEl.addEventListener('click', () => { doEncrypt(); });
+	encryptButtonEl.addEventListener('click', () => {
+		doEncrypt();
+	});
 
 	async function doEncrypt() {
 		if (encryptButtonEl.disabled) return;
@@ -290,7 +341,7 @@ function Api() {
 		}
 	};
 
-	this.save = async function(value) {
+	this.save = async function (value) {
 		let response = await fetch(ENV.API_URL + '/api/save', {
 			method: 'POST',
 			body: JSON.stringify({
@@ -304,7 +355,7 @@ function Api() {
 		return json;
 	};
 
-	this.decode = async function(phrase) {
+	this.decode = async function (phrase) {
 		let response = await fetch(ENV.API_URL + '/api/decode', {
 			method: 'POST',
 			body: JSON.stringify({
@@ -314,6 +365,22 @@ function Api() {
 		let json = await response.json();
 
 		if (!json) throw new Error('invalid response');
+
+		return json;
+	};
+
+	this.autoComplete = async function (word) {
+		let response = await fetch(ENV.API_URL + '/api/autocomplete', {
+			method: 'POST',
+			body: JSON.stringify({
+				word,
+			}),
+		});
+		let json = await response.json();
+
+		if (!json || !Array.isArray(json.variants)) {
+			throw new Error('invalid response');
+		}
 
 		return json;
 	};
