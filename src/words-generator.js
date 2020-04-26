@@ -3,6 +3,9 @@ import { getRandomPhrase } from './words/generate.js';
 
 export { WordsGenerator };
 
+const ENOUGH_WORDS = 3;
+const WORDS_TO_GEN = 1;
+
 function WordsGenerator({ lockedPhrases, logger, phrasesSpace }) {
 	let variants = [];
 
@@ -36,21 +39,17 @@ function WordsGenerator({ lockedPhrases, logger, phrasesSpace }) {
 
 	function preGenerate() {
 		let sleepLoopM = AsyncM.pureM(() => {
-			if (variants.length >= 1000) {
+			if (variants.length >= ENOUGH_WORDS) {
 				return AsyncM.sleep(5000).skipResult(sleepLoopM);
 			}
 
-			logger.info('preGen:start', { count: variants.length });
-
-			return generateWords(200);
+			return generateWords(WORDS_TO_GEN);
 		});
 
 		let m = sleepLoopM.result((words) => {
 			words.forEach((word) => {
 				variants.push(word);
 			});
-
-			logger.info('preGen:step', { count: variants.length });
 
 			return m;
 		});
