@@ -1,4 +1,4 @@
-- hosts: docker
+- hosts: "{{ variable_hosts }}"
   gather_facts: no
 
   vars:

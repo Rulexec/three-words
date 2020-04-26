@@ -1,3 +1,9 @@
+def ansibleHosts = 'staging'
+
+if (env.BRANCH_NAME == 'master') {
+	ansibleHosts = 'production'
+}
+
 pipeline {
 	agent none
 
@@ -28,22 +34,36 @@ pipeline {
 		stage('Deploy') {
 			agent {
 				docker {
-					image 'debian-ansible:2'
+					image 'debian-ansible:3'
 					args '-v /etc/passwd:/etc/passwd:ro'
 				}
 			}
 
+			when {
+				allOf {
+					anyOf {
+						branch 'master'
+						branch 'develop'
+					}
+					expression {
+						currentBuild.result == null || currentBuild.result == 'SUCCESS'
+					}
+				}
+
+			}
+
 			environment {
 				HOME = "${env.WORKSPACE}/.jenkinsDeployHome"
-				ANSIBLE_SSH_ARGS = "-C -o ControlMaster=auto -o ControlPersist=60s -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+				ANSIBLE_HOST_KEY_CHECKING = 'False'
 			}
 
 			steps {
-				configFileProvider([configFile(fileId: 'ansible_hosts', variable: 'ANSIBLE_HOSTS')]) {
+				configFileProvider([configFile(fileId: 'ansible_hosts', variable: 'myAnsibleHosts')]) {
 					withCredentials([sshUserPrivateKey(credentialsId: "jenkins-key", keyFileVariable: 'sshFile')]) {
 						sh "ansible-playbook \
-							-i ${ANSIBLE_HOSTS} \
+							-i ${myAnsibleHosts} \
 							--key-file ${sshFile} \
+							--extra-vars 'variable_hosts=${ansibleHosts}' \
 							build-scripts/ansible/deploy.yml"
 					}
 				}
