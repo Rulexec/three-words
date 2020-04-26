@@ -2,11 +2,15 @@ import fs from 'fs';
 import _path from 'path';
 import { resolveCodePath } from '../code-relative-path.js';
 
-export { getRandomPhrase };
+export { getRandomPhrase, getAllWords };
 
 let colors = readLinesFile(resolveCodePath('../dictionary/colors.txt'));
 let adjectives = readLinesFile(resolveCodePath('../dictionary/adjectives.txt'));
 let nouns = readLinesFile(resolveCodePath('../dictionary/nouns.txt'));
+
+function getAllWords() {
+	return Array.from(new Set([...colors, ...adjectives, ...nouns]));
+}
 
 function getRandomPhrase() {
 	let noun = getRandomItem(nouns);
@@ -107,9 +111,7 @@ function middleSexize(word) {
 }
 
 function isWoman(word) {
-	return /(ст?ь|а|я|нь)$/.test(
-		word,
-	);
+	return /(ст?ь|а|я|нь)$/.test(word);
 }
 
 function isMiddleSex(word) {

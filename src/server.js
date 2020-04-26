@@ -2,11 +2,12 @@ import AsyncM from 'asyncm';
 import fs from 'fs';
 import _path from 'path';
 import metatrain from 'hypershape-metatrain';
-import { getRandomPhrase } from './words/generate.js';
+import { getAllWords } from './words/generate.js';
 import { WordsGenerator } from './words-generator.js';
 import { resolveCodePath } from './code-relative-path.js';
 import { Logger } from 'hypershape-logging';
 import { KeyValueStorage } from 'hypershape-level';
+import { AutoComplete } from './autocomplete/autocomplete.js';
 
 const readJsonFromStream = metatrain.readJsonFromStream;
 
@@ -52,6 +53,11 @@ let wordsGenerator = new WordsGenerator({
 	lockedPhrases,
 	phrasesSpace,
 	logger: mainLogger.fork('words'),
+});
+
+let autoComplete = new AutoComplete();
+getAllWords().forEach(word => {
+	autoComplete.addWord(word);
 });
 
 const PORT = process.env.PORT || 9001;
@@ -142,6 +148,40 @@ server.post('/api/decode', (req, res) => {
 		})
 		.run(null, (error) => {
 			mainLogger.error('api:decode', null, { extra: error });
+
+			res.statusCode = 500;
+			res.end('{"error":500}');
+		});
+});
+
+server.post('/api/autocomplete', (req, res) => {
+	readJsonFromStream(req)
+		.result((json) => {
+			let invalid =
+				!json ||
+				!json.word ||
+				typeof json.word !== 'string' ||
+				json.word.length > 30;
+
+			if (invalid) {
+				return AsyncM.error('invalidParams');
+			}
+
+			return autoComplete.getVariants({
+				word: json.word,
+				count: 3,
+			});
+		})
+		.result(variants => {
+			res.setHeader('content-type', 'application/json; charset=utf-8');
+			res.end(
+				JSON.stringify({
+					variants,
+				}),
+			);
+		})
+		.run(null, (error) => {
+			mainLogger.error('api:autoComplete', null, { extra: error });
 
 			res.statusCode = 500;
 			res.end('{"error":500}');
@@ -252,6 +292,8 @@ mainDb
 	});
 
 function error404(req, res) {
+	mainLogger.trace('http:404', { method: req.method, url: req.url });
+
 	res.statusCode = 404;
 	res.end('404');
 }
